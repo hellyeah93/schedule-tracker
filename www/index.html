@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Schedule Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0d1015" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eff1f4" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{
+  --bg:#0d1015; --surface:#141920; --raised:#1a212a; --line:#242c37; --line2:#2f3947;
+  --text:#e9edf2; --muted:#7f8a99; --faint:#566170;
+  --accent:#7aa7e8; --done:#3fb27f; --done-soft:rgba(63,178,127,.10); --miss:#c4786b;
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px rgba(0,0,0,.28);
+}
+@media (prefers-color-scheme: light){
+  :root{--bg:#eff1f4;--surface:#fff;--raised:#f6f7f9;--line:#e0e4ea;--line2:#cbd2db;--text:#18202a;--muted:#667385;--faint:#97a2b1;--accent:#2f64b5;--done:#1f8a5b;--done-soft:rgba(31,138,91,.08);--miss:#b5604f;--shadow:0 1px 2px rgba(20,30,50,.06),0 6px 18px rgba(20,30,50,.05)}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding:0 18px 90px}
+main{max-width:680px;margin:0 auto}
+.num,.tnum{font-variant-numeric:tabular-nums}
+
+/* top */
+header{padding:48px 0 8px}
+h1{font-size:30px;line-height:1.15;font-weight:650;letter-spacing:-.025em;margin:0}
+.sub{color:var(--muted);margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);margin:28px 0 22px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow)}
+.stat{padding:16px 18px}
+.stat+.stat{border-left:1px solid var(--line)}
+.stat b{display:block;font-size:28px;line-height:1.1;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat span{display:block;margin-top:4px;color:var(--muted);font-size:12.5px}
+.stat small{color:var(--faint);font-size:15px;font-weight:500}
+
+/* heat strip */
+.strip-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;color:var(--muted);font-size:13px}
+.strip{display:grid;grid-template-columns:repeat(30,1fr);gap:4px}
+.cell{aspect-ratio:1;border-radius:3px;background:var(--raised);border:1px solid var(--line);cursor:pointer;padding:0;position:relative}
+.cell.part{background:color-mix(in srgb,var(--done) 35%,var(--raised));border-color:transparent}
+.cell.full{background:var(--done);border-color:transparent}
+.cell.miss{background:color-mix(in srgb,var(--miss) 28%,var(--raised));border-color:transparent}
+.cell.today{outline:1.5px solid var(--accent);outline-offset:1.5px}
+.cell:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* controls */
+.bar{position:sticky;top:0;z-index:5;margin:22px -18px 6px;padding:12px 18px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px}
+.seg button{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;padding:5px 13px;border-radius:6px;cursor:pointer}
+.seg button.on{background:var(--raised);color:var(--text);box-shadow:0 0 0 1px var(--line2)}
+.tools{display:flex;gap:6px}
+.t{background:none;border:1px solid var(--line);color:var(--muted);padding:6px 12px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer;transition:color .15s,border-color .15s}
+.t:hover{color:var(--text);border-color:var(--line2)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* month */
+.month{display:flex;align-items:center;gap:12px;margin:30px 0 12px;color:var(--muted);font-size:13px;font-weight:500;letter-spacing:.02em}
+.month::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* day card */
+.day{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;box-shadow:var(--shadow);transition:border-color .2s,background .2s;overflow:hidden}
+.day.today{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.day.done{background:linear-gradient(0deg,var(--done-soft),var(--done-soft)),var(--surface);border-color:color-mix(in srgb,var(--done) 55%,var(--line))}
+.day.hide{display:none}
+.head{display:flex;align-items:center;gap:16px;width:100%;background:none;border:0;color:inherit;font:inherit;text-align:left;padding:14px 18px;cursor:pointer}
+.date{width:46px;flex:none}
+.date .n{font-size:28px;line-height:1;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.date .w{font-size:12px;color:var(--muted);margin-top:4px}
+.mid{flex:1;min-width:0}
+.mid .t1{font-weight:550}
+.mid .t2{color:var(--muted);font-size:13px;margin-top:1px}
+.tag{display:inline-block;margin-left:8px;font-size:11.5px;font-weight:500;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);padding:1px 8px;border-radius:99px;vertical-align:1px}
+.ring{width:30px;height:30px;flex:none}
+.ring circle{fill:none;stroke-width:3}
+.ring .bg{stroke:var(--line2)}
+.ring .fg{stroke:var(--done);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .35s}
+.chev{width:18px;height:18px;color:var(--faint);flex:none;transition:transform .25s}
+.day.open .chev{transform:rotate(180deg)}
+
+.body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+.day.open .body{grid-template-rows:1fr}
+.body>div{overflow:hidden}
+ul{list-style:none;margin:0;padding:2px 18px 12px 80px}
+li label{display:flex;align-items:center;gap:14px;padding:9px 0;cursor:pointer;border-top:1px solid var(--line)}
+li:first-child label{border-top:0}
+.tm{width:92px;flex:none;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.tx{flex:1;transition:color .15s}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:19px;height:19px;flex:none;margin:0;border:1.5px solid var(--line2);border-radius:6px;background:transparent;cursor:pointer;display:grid;place-content:center;transition:background .15s,border-color .15s;order:3}
+input[type=checkbox]::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) scale(0);margin-top:-2px;transition:transform .12s}
+input[type=checkbox]:checked{background:var(--done);border-color:var(--done)}
+input[type=checkbox]:checked::after{transform:rotate(-45deg) scale(1)}
+input[type=checkbox]:checked ~ .tm,input[type=checkbox]:checked ~ .tx{color:var(--faint)}
+input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.empty{display:none;text-align:center;color:var(--muted);padding:40px 0}
+@media (max-width:520px){
+  h1{font-size:25px} ul{padding-left:18px} .tm{width:78px}
+  .strip{grid-template-columns:repeat(18,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+body{padding-top:env(safe-area-inset-top);padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+@media (pointer:coarse){input[type=checkbox]{width:22px;height:22px}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Daily Schedule</h1>
+    <div class="sub">2 October to 30 December 2026</div>
+    <div class="stats">
+      <div class="stat"><b id="sDone">0</b><span>Days completed</span></div>
+      <div class="stat"><b id="sStreak">0</b><span>Current streak</span></div>
+      <div class="stat"><b id="sLeft">0</b><span>Days remaining</span></div>
+    </div>
+    <div class="strip-h"><span>All 90 days</span><span id="pct" class="tnum">0%</span></div>
+    <div class="strip" id="strip"></div>
+  </header>
+
+  <div class="bar">
+    <div class="seg" id="seg">
+      <button data-f="all" class="on">All</button>
+      <button data-f="pending">Pending</button>
+      <button data-f="done">Completed</button>
+    </div>
+    <div class="tools">
+      <button class="t" id="jump">Today</button>
+      <button class="t" id="exp">Export</button>
+      <button class="t" id="imp">Import</button>
+      <input type="file" id="file" accept=".json" hidden>
+    </div>
+  </div>
+
+  <div id="days"></div>
+  <div class="empty" id="empty">Nothing to show for this filter.</div>
+</main>
+
+<script>
+const ITEMS=[
+ ["wake","5:00 AM","Wake up"],
+ ["run","5:10–5:50","🏃 Running/walking"],
+ ["exercise","6:00–6:45","💪 Exercise"],
+ ["bath","6:45–7:30","Bath + breakfast"],
+ ["start","7:30 AM","📚 Study/tuition starts"],
+ ["study","7:30 AM–12:30 AM","Study/tuition + meals + breaks"],
+ ["sleep","12:30 AM","🛏️ Sleep"]
+];
+const START=new Date(2026,9,2), TOTAL=90, KEY="schedule-tracker-v1", N=ITEMS.length;
+const MON=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+
+const CAP=window.Capacitor, P=CAP&&CAP.Plugins;
+const native=!!(CAP&&CAP.isNativePlatform&&CAP.isNativePlatform());
+const store=native&&P&&P.Preferences?P.Preferences:null;
+let data={};
+const save=()=>{
+  const s=JSON.stringify(data);
+  try{localStorage.setItem(KEY,s)}catch(e){}
+  if(store)store.set({key:KEY,value:s}).catch(()=>{});
+};
+async function loadData(){
+  let a=null,b=null;
+  try{a=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+  if(store){try{const r=await store.get({key:KEY});b=r.value?JSON.parse(r.value):null}catch(e){}}
+  return b||a||{};
+}
+
+(async()=>{
+data=await loadData();
+const days=[];
+for(let i=0;i<TOTAL;i++){const d=new Date(START);d.setDate(START.getDate()+i);days.push({d,k:iso(d)})}
+const todayKey=iso(new Date());
+const wrap=document.getElementById("days"), strip=document.getElementById("strip");
+const chev='<svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg>';
+const C=2*Math.PI*12;
+const ring=`<svg class="ring" viewBox="0 0 30 30"><circle class="bg" cx="15" cy="15" r="12"/><circle class="fg" cx="15" cy="15" r="12" stroke-dasharray="${C}" stroke-dashoffset="${C}"/></svg>`;
+
+let lastMonth=-1;
+days.forEach(({d,k},i)=>{
+  if(d.getMonth()!==lastMonth){
+    lastMonth=d.getMonth();
+    const m=document.createElement("div");m.className="month";m.dataset.m=lastMonth;
+    m.textContent=MON[lastMonth]+" "+d.getFullYear();wrap.appendChild(m);
+  }
+  const el=document.createElement("section");
+  el.className="day"+(k===todayKey?" today":"");el.id="d-"+k;el.dataset.m=d.getMonth();
+  el.innerHTML=`<button class="head" aria-expanded="false">
+    <span class="date"><div class="n">${d.getDate()}</div><div class="w">${DOW[d.getDay()].slice(0,3)}</div></span>
+    <span class="mid"><div class="t1">${DOW[d.getDay()]}${k===todayKey?'<span class="tag">Today</span>':''}</div><div class="t2 tnum"></div></span>
+    ${ring}${chev}</button>
+    <div class="body"><div><ul>${ITEMS.map(([id,tm,tx])=>`<li><label><span class="tm">${tm}</span><span class="tx">${tx}</span><input type="checkbox" data-id="${id}"></label></li>`).join("")}</ul></div></div>`;
+  const head=el.querySelector(".head");
+  head.onclick=()=>{const o=el.classList.toggle("open");head.setAttribute("aria-expanded",o)};
+  el.querySelectorAll("input").forEach(cb=>{
+    cb.onchange=()=>{
+      const s=new Set(data[k]||[]);
+      cb.checked?s.add(cb.dataset.id):s.delete(cb.dataset.id);
+      data[k]=[...s];save();paint(k);stats();applyFilter();
+    };
+  });
+  wrap.appendChild(el);
+
+  const c=document.createElement("button");
+  c.className="cell";c.id="c-"+k;c.title=d.getDate()+" "+MON[d.getMonth()].slice(0,3);
+  c.setAttribute("aria-label",c.title);
+  c.onclick=()=>{const t=document.getElementById("d-"+k);setFilter("all");t.classList.add("open");t.scrollIntoView({block:"center",behavior:"smooth"})};
+  strip.appendChild(c);
+});
+
+const cnt=k=>(data[k]||[]).length;
+function paint(k){
+  const el=document.getElementById("d-"+k), s=new Set(data[k]||[]), n=s.size;
+  el.querySelectorAll("input").forEach(cb=>cb.checked=s.has(cb.dataset.id));
+  const past=k<todayKey;
+  el.querySelector(".t2").textContent=n===N?"Completed":n+" of "+N+" done";
+  el.querySelector(".fg").style.strokeDashoffset=C*(1-n/N);
+  el.classList.toggle("done",n===N);
+  const c=document.getElementById("c-"+k);
+  c.className="cell"+(n===N?" full":n>0?" part":past?" miss":"")+(k===todayKey?" today":"");
+}
+function stats(){
+  const done=days.filter(x=>cnt(x.k)===N).length;
+  const upto=days.filter(x=>x.k<=todayKey);
+  let streak=0;
+  for(let i=upto.length-1;i>=0;i--){
+    if(cnt(upto[i].k)===N)streak++;
+    else if(upto[i].k===todayKey)continue;
+    else break;
+  }
+  const left=days.filter(x=>x.k>=todayKey).length;
+  document.getElementById("sDone").innerHTML=done+' <small>/ '+TOTAL+'</small>';
+  document.getElementById("sStreak").textContent=streak;
+  document.getElementById("sLeft").textContent=left;
+  document.getElementById("pct").textContent=Math.round(done/TOTAL*100)+"% complete";
+}
+
+let filter="all";
+function setFilter(f){
+  filter=f;
+  document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.f===f));
+  applyFilter();
+}
+function applyFilter(){
+  let shown=0;const months={};
+  days.forEach(({k,d})=>{
+    const n=cnt(k);
+    const ok=filter==="all"||(filter==="done"?n===N:n<N);
+    document.getElementById("d-"+k).classList.toggle("hide",!ok);
+    if(ok){shown++;months[d.getMonth()]=1}
+  });
+  document.querySelectorAll(".month").forEach(m=>m.style.display=months[m.dataset.m]?"":"none");
+  document.getElementById("empty").style.display=shown?"none":"block";
+}
+document.querySelectorAll("#seg button").forEach(b=>b.onclick=()=>setFilter(b.dataset.f));
+
+days.forEach(x=>paint(x.k));stats();applyFilter();
+
+function goToday(){
+  setFilter("all");
+  let id=todayKey<days[0].k?days[0].k:todayKey>days[TOTAL-1].k?days[TOTAL-1].k:todayKey;
+  const t=document.getElementById("d-"+id);
+  t.classList.add("open");t.scrollIntoView({block:"center"});
+}
+document.getElementById("jump").onclick=goToday;
+goToday();
+
+document.getElementById("exp").onclick=async()=>{
+  if(native&&P.Filesystem&&P.Share){
+    try{
+      const name="schedule-backup-"+todayKey+".json";
+      const r=await P.Filesystem.writeFile({path:name,data:JSON.stringify(data,null,2),directory:"CACHE",encoding:"utf8"});
+      await P.Share.share({title:name,url:r.uri,dialogTitle:"Save backup"});
+    }catch(e){}
+    return;
+  }
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));
+  a.download="schedule-backup-"+todayKey+".json";a.click();
+};
+const file=document.getElementById("file");
+document.getElementById("imp").onclick=()=>file.click();
+file.onchange=()=>{
+  const f=file.files[0];if(!f)return;
+  f.text().then(t=>{
+    try{const o=JSON.parse(t);if(typeof o!=="object"||o===null)throw 0;
+      data=o;save();days.forEach(x=>paint(x.k));stats();applyFilter();}
+    catch(e){alert("That file is not a valid backup.")}
+  });file.value="";
+};
+if(native&&P.App){
+  P.App.addListener("backButton",()=>{
+    const o=document.querySelector(".day.open");
+    if(o){o.classList.remove("open");o.querySelector(".head").setAttribute("aria-expanded","false")}
+    else P.App.exitApp();
+  });
+}
+})();
+</script>
+<script>
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform())){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
